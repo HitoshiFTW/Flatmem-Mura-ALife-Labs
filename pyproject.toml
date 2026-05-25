@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flatmem"
+version = "0.1.0"
+description = "Constant-RAM content-addressable memory substrate for digital organisms and Artificial Life agents."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "Prince Siddhpara", email = "princesiddhpara67@gmail.com" }]
+keywords = ["memory", "sdm", "vsa", "hdc", "alife", "artificial-life",
+            "sparse-distributed-memory", "vector-symbolic", "hyperdimensional",
+            "agent-based", "online-learning"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Artificial Life",
+]
+dependencies = ["numpy>=1.20"]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+
+[project.urls]
+Homepage = "https://github.com/HitoshiFTW/Flatmem-Mura-ALife-Labs"
+Repository = "https://github.com/HitoshiFTW/Flatmem-Mura-ALife-Labs"
+Paper = "https://github.com/HitoshiFTW/Flatmem-Mura-ALife-Labs/blob/main/PAPER.md"
+
+[tool.setuptools]
+packages = ["flatmem"]
