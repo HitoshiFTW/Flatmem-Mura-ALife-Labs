@@ -123,7 +123,10 @@ python tests/test_universality.py  # ALife integration patterns
 
 ## Research paper
 
-See [PAPER.md](./PAPER.md) for the full architecture rationale, empirical results, prior-art discussion, and novelty analysis. Originally developed inside the **Ikigai** organism project at **Mura ALife Labs** as the constant-RAM memory substrate for a language-grounded digital organism.
+- [PAPER.md](./PAPER.md) — markdown version with full architecture rationale, empirical results, prior-art discussion, and novelty analysis.
+- [paper/paper.tex](./paper/paper.tex) — LaTeX source for the arXiv submission, with figures generated from real experimental data (substrate flatness, mean-removal sweep, no-forgetting bars, vision MNIST results). See [paper/README.md](./paper/README.md) for build instructions.
+
+Originally developed inside the **Ikigai** organism project at **Mura ALife Labs** as the constant-RAM memory substrate for a language-grounded digital organism.
 
 ## Cite
 
