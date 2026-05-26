@@ -109,6 +109,16 @@ class SklearnMlpAdapter(BenchmarkAdapter):
 
     def train(self, X, y):
         X = np.asarray(X); y = np.asarray(y)
+        # sklearn MLPClassifier.partial_fit rejects subsequent y subsets when
+        # classes argument is fixed; pad each task with one zero-vector dummy
+        # per missing class so y always contains all 10 labels.
+        present = set(np.unique(y).tolist())
+        missing = [c for c in self._classes if c not in present]
+        if missing:
+            dummies_X = np.zeros((len(missing), X.shape[1]), dtype=X.dtype)
+            dummies_y = np.asarray(missing, dtype=y.dtype)
+            X = np.vstack([X, dummies_X])
+            y = np.concatenate([y, dummies_y])
         for _ in range(self.epochs_per_task):
             self.clf.partial_fit(X, y, classes=self._classes)
 

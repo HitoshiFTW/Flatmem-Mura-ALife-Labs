@@ -12,7 +12,9 @@ python -m bench.run 5 42                  # 5 tasks, seed 42
 python -m bench.plot permuted_digits_results.json
 ```
 
-## Permuted-Digits (5 sequential tasks, seed 42)
+## Results
+
+### Permuted-Digits (5 sequential tasks)
 
 ```
                   final avg     BWT     sec
@@ -20,13 +22,27 @@ flatmem               65%      -10%    28
 sklearn-mlp           43%      -67%     2
 ```
 
-**MLP**: T0 accuracy 97% → 11% after 4 distractor tasks (catastrophic forgetting).
-**Flatmem**: T0 accuracy 83% → 65% (substantial retention via per-task role-binding).
+MLP T0 accuracy 97% → 11% after 4 tasks. Flatmem 83% → 65%.
+
+![permuted](permuted_digits_matrix.png)
+
+### Split-Digits (5 binary tasks: {0,1}, {2,3}, {4,5}, {6,7}, {8,9})
+
+```
+                  final avg     BWT     sec
+flatmem               87%       -3%    5.7
+sklearn-mlp           20%     -100%    0.6
+```
+
+**MLP catastrophically forgets every prior task**: T0 99% → 0% after T1.
+After all 5 tasks, MLP only knows T4 (the most recent). All others = 0%.
+
+**Flatmem holds all 5**: T0 97% → 93%, final-avg 87%, BWT -3%.
+
+![split](split_digits_matrix.png)
 
 BWT (Backward Transfer): mean drop on prior tasks after later training.
-Strongly negative = forgetting prior tasks. Near zero = no forgetting.
-
-![forgetting matrix](forgetting_matrix.png)
+Strongly negative = forgetting. Near zero = no forgetting.
 
 ## Architecture
 
