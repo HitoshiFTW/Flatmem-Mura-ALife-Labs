@@ -48,8 +48,8 @@ Strongly negative = forgetting. Near zero = no forgetting.
 
 ```
                   final avg     BWT     sec
-flatmem-pca64         92%       +0%     25    <- WINS
-flatmem-raw           89%       +0%     25
+flatmem-raw           92%       -1%     25    <- WINS
+flatmem-pca64         81%       -2%     26
 sklearn-mlp           19%      -99%      1
 torch-cnn             10%      -62%      7
 ```
@@ -68,9 +68,9 @@ of per-task role-binding decisively dominates on this benchmark.
 ```
                   final avg     BWT     sec
 sklearn-mlp           75%      -23%      8    <- highest absolute
-torch-cnn             43%      -57%     37
-flatmem-raw           41%       +0%    127    <- no forgetting
-flatmem-pca64         38%       -0%    128
+flatmem-raw           64%       -5%    126    <- closing the gap, low BWT
+flatmem-pca64         51%       -1%    127
+torch-cnn             43%      -57%     36
 ```
 
 Permuted-MNIST destroys spatial structure (different pixel permutation per
@@ -82,18 +82,24 @@ encoder has lower absolute discriminative power on permuted raw pixels.
 
 ### Pack 134 encoder findings
 
-Two encoder issues found and fixed for 28x28 raw input:
+The default raw-projection encoder collapsed class structure at 28x28
+(phase std ~14 radians wraps many times, distinct images map to similar
+phasors). Two iterations to the right fix:
 
-1. **Phase magnitudes wrap at high input dim.** Without scaling, projection
-   of 784-dim pixels produces phases with std ~14 radians, causing
-   `exp(i*phase)` to wrap many times and destroy class structure. Fix:
-   scale projection matrix by `1/sqrt(in_dim)` so phases stay O(1).
-   Encoder separation improved from 0.000 to 0.034 (raw) and 0.220 (PCA).
+1. **First attempt**: scale projection by `1/sqrt(in_dim)`. Worked on 28x28
+   but regressed 8x8 from 90% to 52% (phases too clustered at small dim).
 
-2. **PCA pre-encoder.** Optional `pca_components` parameter to FlatmemAdapter.
-   Pre-fit on the full training set (class-agnostic feature extractor,
-   frozen before continual learning begins) gives a small additional boost
-   (89% -> 92% on Split-MNIST).
+2. **Final fix**: **L2-normalize input + bandwidth-scaled projection**.
+   - Per-row L2 normalize input -> ||x||=1 regardless of dim or pixel range
+   - Projection drawn from N(0, bandwidth) -> phase std = bandwidth
+   - Default bandwidth=2 rad: sweet spot between phase wrap (>= 3) and
+     over-clustering (< 1). Works on ANY input dimensionality uniformly.
+
+PCA pre-encoder is available as `pca_components=N` but Pack 134 shows it's
+NOT needed --- the bandwidth-scaled encoder alone wins on Split-MNIST.
+PCA-fit-on-un-permuted-data actually HURTS Permuted-MNIST (drops 64% to
+51%) because PCA components don't align with permuted-pixel structure.
+Simpler encoder wins.
 
 ## Architecture
 
