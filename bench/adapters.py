@@ -28,15 +28,27 @@ class FlatmemAdapter(BenchmarkAdapter):
     name = "flatmem"
 
     def __init__(self, d=512, M=4096, M_rel=8192, k=32, seed=42,
-                 enc_seed=7, n_classes=10, n_tasks=5):
+                 enc_seed=7, n_classes=10, n_tasks=5, pca_components=None):
         self.d = d
         self.M = M; self.M_rel = M_rel; self.k = k; self.seed = seed
         self.enc_seed = enc_seed
         self.n_classes = n_classes
         self.n_tasks = n_tasks
         self.task = 0
+        self.pca_components = pca_components   # None = raw random projection
         self._proj = None
+        self._pca = None
         self._build()
+
+    def fit_encoder(self, X):
+        """Pre-fit PCA on training data. One-time before any continual task.
+        Pack 134 fix: raw-pixel random projection collapses class structure
+        at high input dim; PCA components restore separation cheaply."""
+        if self.pca_components is None: return
+        from sklearn.decomposition import PCA
+        self._pca = PCA(n_components=int(self.pca_components),
+                        random_state=self.seed)
+        self._pca.fit(np.asarray(X))
 
     def _build(self):
         roles = tuple(f'class_T{i}' for i in range(self.n_tasks))
@@ -49,10 +61,16 @@ class FlatmemAdapter(BenchmarkAdapter):
     def _encode(self, X):
         X = np.asarray(X, dtype=np.float32)
         if X.ndim == 1: X = X[None, :]
-        if self._proj is None or self._proj.shape[1] != X.shape[1]:
+        if self._pca is not None:
+            X = self._pca.transform(X).astype(np.float32)
+        in_dim = X.shape[1]
+        if self._proj is None or self._proj.shape[1] != in_dim:
             rng = np.random.default_rng(self.enc_seed)
-            self._proj = rng.standard_normal(
-                (self.d, X.shape[1])).astype(np.float32)
+            # Scale projection by 1/sqrt(in_dim) so phases stay O(1) regardless
+            # of input dimensionality. Without this, large in_dim makes phases
+            # wrap many times and class structure collapses (Pack 134 finding).
+            self._proj = (rng.standard_normal((self.d, in_dim)).astype(np.float32)
+                          / np.sqrt(in_dim).astype(np.float32))
         phases = X @ self._proj.T
         return np.exp(1j * phases).astype(np.complex64)
 
@@ -60,6 +78,9 @@ class FlatmemAdapter(BenchmarkAdapter):
         return self.mem.roles[f'class_T{self.task}']
 
     def train(self, X, y):
+        # Auto-fit PCA on first train() call if configured (frozen thereafter)
+        if self.pca_components and self._pca is None:
+            self.fit_encoder(X)
         hvs = self._encode(X)
         ROLE = self._role()
         for hv, lbl in zip(hvs, y):

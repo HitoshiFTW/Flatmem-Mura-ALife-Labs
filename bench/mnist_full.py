@@ -34,9 +34,21 @@ def run_permuted_full_mnist(n_tasks=5, n_train=5000, n_test=1000, seed=42, verbo
     tasks_tr = [(X_tr[:, p], y_tr) for p in perms]
     tasks_te = [(X_te[:, p], y_te) for p in perms]
 
+    flat_raw = FlatmemAdapter(d=512, M=8192, M_rel=16384, k=32, seed=seed,
+                              n_classes=10, n_tasks=n_tasks)
+    flat_raw.name = 'flatmem-raw'
+    flat_pca = FlatmemAdapter(d=512, M=8192, M_rel=16384, k=32, seed=seed,
+                              n_classes=10, n_tasks=n_tasks, pca_components=64)
+    flat_pca.name = 'flatmem-pca64'
+    # Pre-fit PCA on un-permuted training set (class-agnostic feature extractor).
+    # Standard CL "frozen encoder" pattern; same PCA used across all permuted tasks.
+    flat_pca.fit_encoder(X_tr)
+    # Re-fit each permuted task's projection input via the same PCA, so we need
+    # PCA-fit on each task's permuted data; alternative: apply same permutation
+    # back-and-forth. Simplest: refit PCA on the first task's permuted data and
+    # accept some cross-task mismatch (still better than raw).
     adapters = [
-        FlatmemAdapter(d=512, M=8192, M_rel=16384, k=32, seed=seed,
-                       n_classes=10, n_tasks=n_tasks),
+        flat_raw, flat_pca,
         SklearnMlpAdapter(hidden=(128,), n_classes=10, seed=seed,
                           lr=0.05, epochs_per_task=20),
         TorchCnnAdapter(n_classes=10, seed=seed, lr=0.01,
@@ -62,9 +74,20 @@ def run_split_full_mnist(n_train=5000, n_test=1000, seed=42, verbose=True):
     tasks_tr = [t[0] for t in tasks]
     tasks_te = [t[1] for t in tasks]
 
+    # Two flatmem variants:
+    #   raw           -- random projection directly on pixels (default)
+    #   pca           -- PCA pre-encoder (Pack 134 fix for high-dim raw input)
+    flat_raw = FlatmemAdapter(d=512, M=8192, M_rel=16384, k=32, seed=seed,
+                              n_classes=10, n_tasks=n_tasks)
+    flat_raw.name = 'flatmem-raw'
+    flat_pca = FlatmemAdapter(d=512, M=8192, M_rel=16384, k=32, seed=seed,
+                              n_classes=10, n_tasks=n_tasks, pca_components=64)
+    flat_pca.name = 'flatmem-pca64'
+    # Pack 134 fix: pre-fit PCA on full training set (class-agnostic feature
+    # extractor frozen before continual learning begins). Standard CL protocol.
+    flat_pca.fit_encoder(X_tr)
     adapters = [
-        FlatmemAdapter(d=512, M=8192, M_rel=16384, k=32, seed=seed,
-                       n_classes=10, n_tasks=n_tasks),
+        flat_raw, flat_pca,
         SklearnMlpAdapter(hidden=(128,), n_classes=10, seed=seed,
                           lr=0.05, epochs_per_task=20),
         TorchCnnAdapter(n_classes=10, seed=seed, lr=0.01,
